@@ -69,7 +69,7 @@ class BookingController:
             )
 
             print(f"\n[Success] Booking confirmed! Booking ID: {booking.booking_id}")
-            print(f"Total Amount Paid: ${booking.total_amount:.2f}")
+            print(f"Total Amount Paid: ₹{booking.total_amount:.2f}")
 
         except MovieTicketSystemError as e:
             print(f"\n[Error] {str(e)}")
@@ -91,7 +91,7 @@ class BookingController:
             print("No bookings found.")
             return
 
-        headers = ["Booking ID", "Movie", "Start Time", "Seats", "Total ($)", "Status"]
+        headers = ["Booking ID", "Movie", "Start Time", "Seats", "Total (₹)", "Status"]
         rows = [
             [
                 b["booking_id"],
@@ -137,7 +137,7 @@ class BookingController:
                 b["title"],
                 b["start_time"],
                 b["seats"],
-                f"${b['total_amount']:.2f}",
+                f"₹{b['total_amount']:.2f}",
                 b["status"],
             ]
             for b in bookings

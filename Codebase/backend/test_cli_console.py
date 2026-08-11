@@ -51,7 +51,7 @@ inputs = [
     "1", # Theater ID
     "1", # Screen ID
     "2026-12-18 19:30",
-    "14.50",
+    "250.00",
 
     # View & Search Movies
     "2",

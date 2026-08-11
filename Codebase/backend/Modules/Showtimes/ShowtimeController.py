@@ -62,7 +62,7 @@ class ShowtimeController:
             return
 
         price = Helpers.prompt_float(
-            "Ticket Price in USD (e.g., 12.50): ", min_val=0.01
+            "Ticket Price in INR (e.g., 250.00): ", min_val=0.01
         )
         if price is None:
             return
@@ -112,7 +112,7 @@ class ShowtimeController:
                 s["theater_name"],
                 s["screen_name"],
                 s["start_time"],
-                f"${s['price']:.2f}",
+                f"₹{s['price']:.2f}",
                 s["available_seats"],
             ]
             for s in showtimes
@@ -139,7 +139,7 @@ class ShowtimeController:
 
             headers = ["Movie Title", "Start Time", "Screen", "Price"]
             rows = [
-                [s["title"], s["start_time"], s["screen_name"], f"${s['price']:.2f}"]
+                [s["title"], s["start_time"], s["screen_name"], f"₹{s['price']:.2f}"]
                 for s in showtimes
             ]
             Helpers.print_table(headers, rows)
