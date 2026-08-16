@@ -26,7 +26,7 @@ The application explicitly implements six core Design Patterns:
 ### Admin Capabilities
 - **Authentication**: Secure login as system administrator.
 - **Movie Management**: Add, update, delete (blocked if active bookings exist), and search movies.
-- **Theater Management**: Create theaters and auto-generate linked screening halls based on total capacity.
+- **Theater Management**: Create theaters and configure each screening hall's seat count individually; the theatre's total capacity is derived from its screens.
 - **Showtime Scheduling**: Schedule movies to screens. Includes a built-in overlap checker to prevent scheduling conflicts.
 - **System Overview**: View all active and past bookings across the system and export booking logs to CSV files.
 
@@ -74,3 +74,29 @@ If no admins are found in the system, it automatically injects a default admin a
 
 ### 3. Customer Usage
 After logging out of the Admin account (or opening a new session), choose `Register Customer Account` from the main menu to create a standard user profile and test the ticket booking flows!
+
+## ✅ Tests
+
+Two suites, both dependency-free and both exiting non-zero on failure:
+
+```bash
+cd Codebase/backend
+
+python3 tests_regression.py   # 212 checks across every module
+python3 test.py               # scripted end-to-end CLI walkthrough
+```
+
+`tests_regression.py` covers the helpers, seat-layout maths, authentication and role
+separation, theatre creation, all seven movie search strategies, showtime overlap
+boundaries, the full booking and cancellation lifecycle, pricing strategies, the audit
+trail and the observer wiring. `test.py` drives `Main.py` through a complete admin +
+customer session with canned keystrokes and asserts on the resulting database rows.
+
+Each suite runs against its own throwaway database, so your `movies.db` is never touched.
+
+## ⚠️ Known Issues
+
+See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the full audit — what was fixed, and the
+remaining limitations (seat-uniqueness is enforced in application code rather than by a
+database constraint, passwords use unsalted SHA-256, payment is simulated, and money is
+stored as `float`).

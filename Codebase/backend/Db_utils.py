@@ -13,8 +13,11 @@ class DatabaseConnectionManager:
     def __new__(cls, db_name="movies.db"):
         with cls._lock:
             if cls._instance is None:
-                cls._instance = super(DatabaseConnectionManager, cls).__new__(cls)
-                cls._instance._init_connection(db_name)
+                # Only publish the instance once it is fully connected, otherwise a
+                # failed _init_connection leaves a half-built object cached forever.
+                instance = super(DatabaseConnectionManager, cls).__new__(cls)
+                instance._init_connection(db_name)
+                cls._instance = instance
             return cls._instance
 
     def _init_connection(self, db_name):
@@ -142,11 +145,22 @@ class DatabaseConnectionManager:
                     "INSERT INTO users (username, password, email, phone, role) VALUES (?, ?, ?, ?, ?)",
                     ("admin", pw, "admin@system.com", "0000000000", "ADMIN"),
                 )
+                # The seeded admin is a real change to the users table, so it belongs
+                # in the audit trail too. Written directly because AuditService imports
+                # this module (importing it here would be circular).
+                cursor.execute(
+                    "INSERT INTO audit_logs (table_name, record_id, action, changed_by) "
+                    "VALUES (?, ?, ?, ?)",
+                    ("users", cursor.lastrowid, "INSERT", None),
+                )
                 self.conn.commit()
 
         except sqlite3.Error as e:
+            # Re-raise: continuing on a half-created schema only turns one clear
+            # startup error into confusing "no such table" failures later.
             print(f"Database error during table creation: {e}")
             self.conn.rollback()
+            raise
 
     def execute(self, query, params=()):
         try:
@@ -185,3 +199,7 @@ class DatabaseConnectionManager:
     def close(self):
         if self.conn:
             self.conn.close()
+            self.conn = None
+        # Drop the cached instance, otherwise the next DatabaseConnectionManager()
+        # hands back this closed object and every query raises ProgrammingError.
+        DatabaseConnectionManager._instance = None

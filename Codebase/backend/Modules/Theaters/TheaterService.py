@@ -11,15 +11,27 @@ class TheaterService:
         self.theater_dao = TheaterDAO()
         self.audit_service = AuditService()
 
-    def add_theater_with_screens(self, theater, num_screens, admin_id):
+    def add_theater_with_screens(self, theater, screens, admin_id):
+        """Creates a theater and its screens using the seat counts supplied by the admin.
+
+        `screens` is a list of {'screen_name': str, 'capacity': int}.
+        """
         if not theater.name or not theater.city:
             raise InvalidInputError("Theater name and city are required.")
 
-        if theater.capacity <= 0:
-            raise InvalidInputError("Total capacity must be greater than 0.")
+        if not screens:
+            raise InvalidInputError("At least one screen is required.")
 
-        if num_screens <= 0:
-            raise InvalidInputError("Number of screens must be at least 1.")
+        for s in screens:
+            if not s.get("screen_name"):
+                raise InvalidInputError("Every screen needs a name.")
+            if s.get("capacity", 0) <= 0:
+                raise InvalidInputError(
+                    f"Seat count for '{s.get('screen_name')}' must be greater than 0."
+                )
+
+        # The theater capacity is the sum of its screens, so no seats are lost.
+        theater.capacity = sum(s["capacity"] for s in screens)
 
         theater_id = self.theater_dao.insert_theater(theater)
         theater.theater_id = theater_id
@@ -27,15 +39,12 @@ class TheaterService:
             "theaters", theater_id, AuditAction.INSERT, admin_id
         )
 
-        # Auto-generate screens (capacity divided roughly equally)
-        screen_capacity = theater.capacity // num_screens
-
-        for i in range(1, num_screens + 1):
+        for spec in screens:
             s = Screen(
                 screen_id=None,
                 theater_id=theater_id,
-                screen_name=f"Screen {i}",
-                capacity=screen_capacity,
+                screen_name=spec["screen_name"],
+                capacity=spec["capacity"],
             )
             screen_id = self.theater_dao.insert_screen(s)
             self.audit_service.log_action(

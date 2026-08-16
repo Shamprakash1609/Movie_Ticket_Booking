@@ -4,7 +4,7 @@ from Modules.Audit.AuditModel import AuditLog
 class AuditDAO:
     def __init__(self):
         self.db = DatabaseConnectionManager()
-        
+
     def insert(self, audit_log):
         query = """
             INSERT INTO audit_logs (table_name, record_id, action, changed_by)

@@ -1,6 +1,7 @@
 from Modules.Bookings.BookingModel import Booking
 from Modules.Bookings.BookingSeatModel import BookingSeat
 from Modules.Common.Enums import BookingStatus, PaymentStatus
+from Modules.Common.Exceptions import InvalidInputError
 
 
 class BookingBuilder:
@@ -40,10 +41,12 @@ class BookingBuilder:
         return self
 
     def build_booking(self):
+        # InvalidInputError (not ValueError) so the controllers' existing
+        # "except MovieTicketSystemError" handlers catch these instead of crashing.
         if self._booking.user_id == 0 or self._booking.showtime_id == 0:
-            raise ValueError("Booking must have a user and showtime.")
+            raise InvalidInputError("Booking must have a user and showtime.")
         if not self._seats:
-            raise ValueError("Booking must have at least one seat.")
+            raise InvalidInputError("Booking must have at least one seat.")
         return self._booking
 
     def build_seats(self):

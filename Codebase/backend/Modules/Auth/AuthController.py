@@ -1,4 +1,3 @@
-
 from Modules.Auth.AuthService import AuthService
 from Modules.Auth.UserModel import User
 from Modules.Common.Exceptions import AuthenticationError, RegistrationError
@@ -13,7 +12,7 @@ class AuthController:
         print("\n--- Admin Login ---")
         username = input("Username/Email: ")
         password = getpass.getpass("Password: ")
-        
+
         try:
             user = self.auth_service.authenticate(username, password, as_admin=True)
             print(f"\nWelcome back, Admin {user.username}!")
@@ -26,7 +25,7 @@ class AuthController:
         print("\n--- Customer Login ---")
         email = input("Email/Username: ")
         password = getpass.getpass("Password: ")
-        
+
         try:
             user = self.auth_service.authenticate(email, password, as_admin=False)
             print(f"\nWelcome back, {user.username}!")
@@ -38,7 +37,7 @@ class AuthController:
     def register_customer(self):
         print("\n--- Customer Registration ---")
         print("(Note: Type 'c' or 'cancel' at any prompt to cancel registration)")
-        
+
         username = Helpers.prompt_non_empty("Username (e.g., john_doe): ")
         if not username: return
 
@@ -50,13 +49,13 @@ class AuthController:
             print("[Input Error] Invalid email format. Example: user@domain.com. Please try again.")
 
         phone = input("Phone Number (e.g., +15551234567) [Optional]: ").strip()
-        
+
         while True:
             password = getpass.getpass("Password (at least 4 characters): ")
             if len(password) >= 4:
                 break
             print("[Input Error] Password must be at least 4 characters long. Please try again.")
-        
+
         try:
             user = self.auth_service.register_customer(username, password, email, phone)
             print(f"\n[Success] Registration successful! Welcome, {user.username}. You can now log in.")

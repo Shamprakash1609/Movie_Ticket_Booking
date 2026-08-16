@@ -48,6 +48,12 @@ class ShowtimeService:
         capacity = row["capacity"]
 
         start_time = datetime.strptime(start_time_str, "%Y-%m-%d %H:%M")
+
+        # Every listing query filters on start_time > now, so a showtime scheduled in
+        # the past would be invisible in the UI while still occupying its screen slot.
+        if start_time <= datetime.now():
+            raise InvalidInputError("Start time must be in the future.")
+
         # Add movie duration + some buffer (e.g., 30 mins for cleaning)
         end_time = start_time + timedelta(minutes=movie.duration + 30)
         end_time_str = end_time.strftime("%Y-%m-%d %H:%M")
@@ -87,7 +93,58 @@ class ShowtimeService:
     def get_movie_showtimes(self, movie_id):
         return self.showtime_dao.get_available_showtimes_by_movie(movie_id)
 
-    def get_theater_showtimes(self, theater_id, date):
-        if not Helpers.is_valid_date(date):
+    def get_showtime_details(self, showtime_id):
+        return self.showtime_dao.get_showtime_details(showtime_id)
+
+    def get_all_upcoming_showtimes(self):
+        return self.showtime_dao.get_all_upcoming_showtimes()
+
+    def get_upcoming_showtimes_grouped_by_movie(self):
+        """All movies that have upcoming shows, each with its list of showtimes."""
+        grouped = {}
+        for row in self.showtime_dao.get_all_upcoming_showtimes():
+            movie = grouped.setdefault(
+                row["movie_id"],
+                {
+                    "movie_id": row["movie_id"],
+                    "title": row["title"],
+                    "genre": row["genre"],
+                    "language": row["language"],
+                    "duration": row["duration"],
+                    "showtimes": [],
+                },
+            )
+            movie["showtimes"].append(row)
+        return list(grouped.values())
+
+    def get_theater_showtimes(self, theater_id, date=None):
+        if date and not Helpers.is_valid_date(date):
             raise InvalidInputError("Invalid date format. Use YYYY-MM-DD.")
         return self.showtime_dao.get_showtimes_by_theater(theater_id, date)
+
+    def get_theater_show_dates(self, theater_id):
+        return self.showtime_dao.get_showtime_dates_by_theater(theater_id)
+
+    def get_theater(self, theater_id):
+        return self.theater_dao.get_theater_by_id(theater_id)
+
+    def get_movies_with_upcoming_shows(self):
+        return self.showtime_dao.get_movies_with_upcoming_shows()
+
+    def get_theaters_for_movie(self, movie_id):
+        return self.showtime_dao.get_theaters_for_movie(movie_id)
+
+    def get_movie_show_dates_at_theater(self, movie_id, theater_id):
+        return self.showtime_dao.get_show_dates_for_movie_at_theater(
+            movie_id, theater_id
+        )
+
+    def get_movie_showtimes_at_theater(self, movie_id, theater_id, date=None):
+        if date and not Helpers.is_valid_date(date):
+            raise InvalidInputError("Invalid date format. Use YYYY-MM-DD.")
+        return self.showtime_dao.get_showtimes_for_movie_at_theater(
+            movie_id, theater_id, date
+        )
+
+    def get_upcoming_show_dates(self):
+        return self.showtime_dao.get_upcoming_show_dates()

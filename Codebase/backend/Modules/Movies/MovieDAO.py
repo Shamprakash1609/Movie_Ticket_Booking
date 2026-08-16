@@ -31,7 +31,7 @@ class MovieDAO:
     def update(self, movie):
         query = """
             UPDATE movies
-            SET title = ?, description = ?, duration = ?, genre = ?, language = ?, 
+            SET title = ?, description = ?, duration = ?, genre = ?, language = ?,
                 release_date = ?, rating = ?, poster_url = ?, updated_at = CURRENT_TIMESTAMP
             WHERE movie_id = ?
         """

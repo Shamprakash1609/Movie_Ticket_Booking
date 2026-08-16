@@ -17,7 +17,9 @@ class NotificationService(Subject):
             self._observers.append(observer)
 
     def detach(self, observer):
-        self._observers.remove(observer)
+        # Mirrors attach()'s guard; list.remove raises ValueError on an unknown observer.
+        if observer in self._observers:
+            self._observers.remove(observer)
 
     def notify(self):
         for observer in self._observers:
@@ -41,4 +43,3 @@ class ConsoleCustomerObserver(Observer):
         except Exception:
             # Fallback to standard console print if file write fails
             print(f"\n{message}")
-

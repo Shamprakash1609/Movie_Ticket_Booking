@@ -30,9 +30,9 @@ class MainCLIController:
             print("3. Browse Movies as Guest")
             print("4. View Theaters")
             print("5. Exit Application")
-            
+
             choice = input("\nEnter your choice: ")
-            
+
             if choice == '1':
                 self.handle_login()
             elif choice == '2':
@@ -51,9 +51,9 @@ class MainCLIController:
         print("\nLogin As:")
         print("1. Customer")
         print("2. Admin")
-        
+
         choice = input("Choice: ")
-        
+
         if choice == '1':
             user = self.auth_controller.customer_login()
             if user:
@@ -78,9 +78,9 @@ class MainCLIController:
             print("6. Manage Showtimes (Add)")
             print("7. View All Bookings & Export")
             print("8. Logout")
-            
+
             choice = input("\nEnter your choice: ")
-            
+
             if choice == '1':
                 self.movie_controller.add_movie(admin.user_id)
             elif choice == '2':
@@ -116,9 +116,9 @@ class MainCLIController:
             print("8. User Profile Management")
             print("9. Contact Us & Support")
             print("10. Logout")
-            
+
             choice = input("\nEnter your choice: ")
-            
+
             if choice == '1':
                 self.movie_controller.browse_movies_customer()
             elif choice == '2':
@@ -148,12 +148,18 @@ class MainCLIController:
 if __name__ == "__main__":
     # Ensure database is initialized before anything else
     db = DatabaseConnectionManager()
-    
+
     app = MainCLIController()
-    
+
     try:
         app.start()
     except KeyboardInterrupt:
         print("\nForce exiting application. Goodbye!")
         db.close()
         sys.exit(0)
+    except Exception as e:
+        # Last-resort net: an unexpected error should report itself rather than
+        # dumping a traceback and losing the session.
+        print(f"\n[Fatal] Unexpected error: {type(e).__name__}: {e}")
+        db.close()
+        sys.exit(1)

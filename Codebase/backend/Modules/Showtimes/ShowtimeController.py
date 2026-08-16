@@ -23,20 +23,20 @@ class ShowtimeController:
         print("\nAvailable Movies:")
         MovieView.display_movies_table(movies)
 
-    def add_showtime(self, admin_id):
-        print("\n--- Manage Showtimes (Add) ---")
-
-        movies = self.movie_service.get_all_movies()
-        if not movies:
-            print("No movies available. Add a movie first.")
-            return
-
-        print("\nAvailable Movies:")
-        MovieView.display_movies_table(movies)
-
         movie_id = Helpers.prompt_int("Enter Movie ID: ", min_val=1)
         if movie_id is None:
             return
+
+        theaters = self.theater_service.get_all_theaters()
+        if not theaters:
+            print("No theaters available. Add a theater first.")
+            return
+
+        print("\nAvailable Theaters:")
+        Helpers.print_table(
+            ["ID", "Name", "Location", "City"],
+            [[t.theater_id, t.name, t.location, t.city] for t in theaters],
+        )
 
         theater_id = Helpers.prompt_int("Enter Theater ID to see screens: ", min_val=1)
         if theater_id is None:
@@ -75,11 +75,72 @@ class ShowtimeController:
         except MovieTicketSystemError as e:
             print(f"[Error] {str(e)}")
 
+    def _display_now_showing(self):
+        """Lists every movie with its upcoming showtimes. Returns the valid movie IDs."""
+        movies = self.movie_service.get_all_movies()
+        if not movies:
+            print("No movies available at the moment.")
+            return None
+
+        scheduled = {
+            m["movie_id"]: m
+            for m in self.showtime_service.get_upcoming_showtimes_grouped_by_movie()
+        }
+
+        if scheduled:
+            print("\n🎟  NOW SHOWING")
+            for movie in scheduled.values():
+                print(
+                    f"\n🎬 [Movie ID: {movie['movie_id']}] {movie['title'].upper()} "
+                    f"— {movie['genre']} | {movie['language']} | {movie['duration']} mins"
+                )
+                headers = [
+                    "Showtime ID",
+                    "Theater",
+                    "Screen",
+                    "Start Time",
+                    "Price",
+                    "Seats Left",
+                ]
+                rows = [
+                    [
+                        s["showtime_id"],
+                        s["theater_name"],
+                        s["screen_name"],
+                        s["start_time"],
+                        f"₹{s['price']:.2f}",
+                        s["available_seats"],
+                    ]
+                    for s in movie["showtimes"]
+                ]
+                Helpers.print_table(headers, rows)
+        else:
+            print("\nNo upcoming showtimes are scheduled right now.")
+
+        unscheduled = [m for m in movies if m.movie_id not in scheduled]
+        if unscheduled:
+            print("\n📅 COMING SOON (no showtimes scheduled yet)")
+            MovieView.display_movies_table(unscheduled)
+
+        return {m.movie_id for m in movies}
+
     def view_movie_details_and_showtimes(self):
-        print("\n--- View Movie Showtimes ---")
-        movie_id = Helpers.prompt_int("Enter Movie ID: ", min_val=1)
-        if movie_id is None:
+        print("\n--- View Movie Details & Available Showtimes ---")
+
+        valid_ids = self._display_now_showing()
+        if valid_ids is None:
             return
+
+        print("(Type 'c' to go back)")
+        while True:
+            movie_id = Helpers.prompt_int(
+                "\nEnter Movie ID to see full details: ", min_val=1
+            )
+            if movie_id is None:
+                return
+            if movie_id in valid_ids:
+                break
+            print(f"[Input Error] {movie_id} is not in the list above. Please try again.")
 
         movie = self.movie_service.get_movie(movie_id)
         if not movie:
@@ -123,23 +184,76 @@ class ShowtimeController:
 
     def view_showtimes_by_theater(self):
         print("\n--- View Showtimes by Theater ---")
-        theater_id = Helpers.prompt_int("Enter Theater ID: ", min_val=1)
-        if theater_id is None:
+
+        theaters = self.theater_service.get_all_theaters()
+        if not theaters:
+            print("No theaters available.")
             return
 
-        date = Helpers.prompt_date("Enter Date (YYYY-MM-DD, e.g., 2026-08-15): ")
-        if not date:
+        print("\nAvailable Theaters:")
+        Helpers.print_table(
+            ["#", "Name", "Location", "City", "Total Seats"],
+            [
+                [i + 1, t.name, t.location, t.city, t.capacity]
+                for i, t in enumerate(theaters)
+            ],
+        )
+
+        choice = Helpers.prompt_list_choice("Select a theatre (#): ", len(theaters))
+        if choice is None:
             return
+        theater = theaters[choice]
+
+        dates = self.showtime_service.get_theater_show_dates(theater.theater_id)
+        if not dates:
+            print(f"\nNo upcoming showtimes at {theater.name}, {theater.city}.")
+            return
+
+        print(f"\n📅 Dates with shows at {theater.name} — {theater.location}, {theater.city}:")
+        rows = [
+            [i + 1, d["show_date"], Helpers.day_name(d["show_date"]), d["show_count"]]
+            for i, d in enumerate(dates)
+        ]
+        # "All dates" only earns a row when there is more than one date to merge.
+        if len(dates) > 1:
+            rows.append(
+                [len(dates) + 1, "All dates", "-", sum(d["show_count"] for d in dates)]
+            )
+        Helpers.print_table(["#", "Date", "Day", "Shows"], rows)
+
+        choice = Helpers.prompt_list_choice("Select a date (#): ", len(rows))
+        if choice is None:
+            return
+        # The extra row past the last date is the "All dates" option.
+        date = None if choice == len(dates) else dates[choice]["show_date"]
 
         try:
-            showtimes = self.showtime_service.get_theater_showtimes(theater_id, date)
+            showtimes = self.showtime_service.get_theater_showtimes(
+                theater.theater_id, date
+            )
             if not showtimes:
-                print("No showtimes found for this location and date.")
+                print("No showtimes found for this theatre and date.")
                 return
 
-            headers = ["Movie Title", "Start Time", "Screen", "Price"]
+            when = date or "all upcoming dates"
+            print(f"\n🎟  Shows at {theater.name}, {theater.city} — {when}")
+            headers = [
+                "Movie Title",
+                "Screen",
+                "Start Time",
+                "Day",
+                "Price",
+                "Seats Left",
+            ]
             rows = [
-                [s["title"], s["start_time"], s["screen_name"], f"₹{s['price']:.2f}"]
+                [
+                    s["title"],
+                    s["screen_name"],
+                    s["start_time"],
+                    Helpers.day_name(s["start_time"]),
+                    f"₹{s['price']:.2f}",
+                    s["available_seats"],
+                ]
                 for s in showtimes
             ]
             Helpers.print_table(headers, rows)

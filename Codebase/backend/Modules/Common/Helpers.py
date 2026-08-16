@@ -1,9 +1,13 @@
 import hashlib
+import hmac
+import math
 import re
 from datetime import datetime
 
 
 class Helpers:
+    MIN_PASSWORD_LENGTH = 4
+
     @staticmethod
     def hash_password(password):
         """Hash a password for storing."""
@@ -12,7 +16,11 @@ class Helpers:
     @staticmethod
     def verify_password(stored_password, provided_password):
         """Verify a stored password against one provided by user"""
-        return stored_password == Helpers.hash_password(provided_password)
+        # compare_digest instead of == so the comparison time does not depend on
+        # how many leading characters of the hash matched.
+        return hmac.compare_digest(
+            stored_password or "", Helpers.hash_password(provided_password)
+        )
 
     @staticmethod
     def is_valid_email(email):
@@ -69,6 +77,13 @@ class Helpers:
                 return None
             try:
                 val = float(val_str)
+                # float() accepts 'nan'/'inf'; nan compares False against every bound,
+                # so it would slip past the min_val check and be stored as a price.
+                if not math.isfinite(val):
+                    print(
+                        "[Input Error] Invalid input. Please enter a valid decimal number (e.g. 12.50) (or 'c' to cancel)."
+                    )
+                    continue
                 if min_val is not None and val < min_val:
                     print(
                         f"[Input Error] Value must be at least {min_val}. Please try again."
@@ -119,6 +134,37 @@ class Helpers:
             if val_str:
                 return val_str
             print("[Input Error] This field cannot be empty. Please try again.")
+
+    @staticmethod
+    def prompt_list_choice(prompt_text, count, allow_back=False):
+        """Pick one entry from a numbered list that was just printed.
+
+        Returns the 0-based index, the string 'back' when the user types 'b',
+        or None when the user cancels out of the flow entirely.
+        """
+        hints = ["a number 1-%d" % count if count > 1 else "1"]
+        if allow_back:
+            hints.append("'b' to go back")
+        hints.append("'c' to cancel")
+
+        while True:
+            raw = input(prompt_text).strip().lower()
+            if raw in ("c", "cancel", "q", "quit"):
+                print("Operation cancelled.")
+                return None
+            if allow_back and raw in ("b", "back"):
+                return "back"
+            if raw.isdigit() and 1 <= int(raw) <= count:
+                return int(raw) - 1
+            print(f"[Input Error] Enter {', '.join(hints)}.")
+
+    @staticmethod
+    def day_name(date_string):
+        """'2026-08-14' -> 'Friday'. Returns '-' if the date can't be parsed."""
+        try:
+            return datetime.strptime(date_string[:10], "%Y-%m-%d").strftime("%A")
+        except (ValueError, TypeError):
+            return "-"
 
     @staticmethod
     def print_table(headers, rows):

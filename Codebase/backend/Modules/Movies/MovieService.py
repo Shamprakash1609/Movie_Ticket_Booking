@@ -61,7 +61,7 @@ class MovieService:
 
         # Check for active bookings
         query = """
-            SELECT COUNT(*) as count 
+            SELECT COUNT(*) as count
             FROM bookings b
             JOIN showtimes s ON b.showtime_id = s.showtime_id
             WHERE s.movie_id = ? AND b.status = 'CONFIRMED'
@@ -70,6 +70,17 @@ class MovieService:
         if row and row["count"] > 0:
             raise ActiveBookingsExistError(
                 "Cannot delete movie. Active bookings exist."
+            )
+
+        # showtimes.movie_id references movies with no ON DELETE CASCADE, so deleting a
+        # scheduled movie raises a raw sqlite3.IntegrityError that no handler catches.
+        # Check first and report it as a domain error instead of crashing the CLI.
+        row = self.db.fetchone(
+            "SELECT COUNT(*) as count FROM showtimes WHERE movie_id = ?", (movie_id,)
+        )
+        if row and row["count"] > 0:
+            raise InvalidInputError(
+                "Cannot delete movie. Showtimes are still scheduled for it."
             )
 
         self.movie_dao.delete(movie_id)

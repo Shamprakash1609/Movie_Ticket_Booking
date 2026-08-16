@@ -60,11 +60,19 @@ class SupportController:
                     print("[Error] Invalid email format.")
                     continue
 
+                previous = (user.username, user.email, user.phone)
                 user.username = new_name
                 user.email = new_email
                 user.phone = new_phone
 
-                self.user_dao.update(user)
+                try:
+                    self.user_dao.update(user)
+                except MovieTicketSystemError as e:
+                    # Put the in-memory user back so the session keeps working.
+                    user.username, user.email, user.phone = previous
+                    print(f"[Error] {str(e)}")
+                    continue
+
                 self.audit_service.log_action(
                     "users", user.user_id, AuditAction.UPDATE, user.user_id
                 )
@@ -77,12 +85,19 @@ class SupportController:
                     continue
 
                 new_pass = getpass.getpass("New Password: ")
-                if len(new_pass) < 4:
+                if len(new_pass) < Helpers.MIN_PASSWORD_LENGTH:
                     print("[Error] Password too short.")
                     continue
 
+                previous_password = user.password
                 user.password = Helpers.hash_password(new_pass)
-                self.user_dao.update(user)
+                try:
+                    self.user_dao.update(user)
+                except MovieTicketSystemError as e:
+                    user.password = previous_password
+                    print(f"[Error] {str(e)}")
+                    continue
+
                 self.audit_service.log_action(
                     "users", user.user_id, AuditAction.UPDATE, user.user_id
                 )
